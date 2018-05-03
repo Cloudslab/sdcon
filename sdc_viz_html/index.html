@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SDC Monitor</title>
+<style type="text/css">
+@import url(https://fonts.googleapis.com/css?family=Open+Sans);
+
+body {
+  background: lightblue;
+  color:black;
+}
+text {
+    font: 6px sans-serif;
+}
+.links line {
+  stroke: #444;
+  stroke-opacity: 0.2;
+}
+.nodes circle {
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+.nodes text {
+  pointer-events: none;
+  font: 10px sans-serif;
+}
+path.links2, path.textpath {
+    fill: none;
+    stroke: #cccccc;
+    stroke-width: 0.5px;
+}
+
+textpath {
+  font: 6px sans-serif;
+  fill: #333;
+}
+</style>
+</head>
+<body>
+
+<div id="option">
+    <input name="updateButton" 
+           type="button" 
+           value="Update" 
+           onclick="updateData()" />
+    &nbsp;&nbsp;&nbsp;
+    <input name="stopUpdateButton" 
+           type="button" 
+           value="Pause Update" 
+           onclick="pauseUpdate()" />
+ 
+    <input name="resumeUpdateButton" 
+           type="button" 
+           value="Resume Update" 
+           onclick="resumeUpdate()" />
+    &nbsp;&nbsp;&nbsp;
+    <a href="/"><button>All Traffic</button></a>
+    <a href="/?vm"><button>Tunneling Traffic</button></a>
+           
+</div>
+
+<div style="width:100%;height:100%;text-align:center;background-color: lightblue;">
+
+<br>
+<svg width="1080" height="760" style="background-color: white;"></svg>
+</div>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+var sdc_data_file = "sdc_viz_data";
+
+function get_data_from_url() {
+    var url = window.location.search;
+    var par = url.split("?")[1];
+    if(par == "vm")
+      return "sdc_viz_data_vm";
+    return "sdc_viz_data";
+}
+
+sdc_data_file=get_data_from_url()
+
+var svg = d3.select("svg").call(d3.zoom().on("zoom", function () {
+                     svg_g.attr("transform", d3.event.transform) })),
+    width = +svg.attr("width"),
+    height = +svg.attr("height"),
+    arcLevel = 2,
+    arrowColor = '#777',
+    forceRadius = 40,
+    nodeColorSelector = d3.scaleOrdinal(d3.schemeCategory10),
+    colorPath = d3.scaleOrdinal(d3.schemeCategory20);
+
+    svg.append('defs').selectAll('marker')
+        .data(['end'])
+        .enter()
+      .append('marker')
+        .attr('id', "arrowhead")
+        .attr('viewBox','0 -5 10 10')
+        .attr('refX', -10)
+        .attr('refY',0)
+        .attr('orient','auto')
+        .attr('markerWidth', 9)
+        .attr('markerHeight', 9)
+        .attr('markerUnits', "userSpaceOnUse")
+        .attr('xoverflow','visible')
+      .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', arrowColor);
+
+var svg_g = svg.append('g'), // This g is for zoom function.
+    link = svg_g.append("g").attr("class", "links"),
+    path = svg_g.append("g").attr("class", "links2"),
+    pathLabel = svg_g.append("g").attr("class", "pathLabel"),
+    node;
+
+var nodes, links, links2; // from json data
+
+var simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(80))
+    .force("path", d3.forceLink().id(function(d) { return d.id; }).distance(80).strength(0))
+    .force("charge", d3.forceManyBody().strength(-1000))
+    .alphaTarget(1)
+    //.force("center", d3.forceCenter(width / 2, height/2))
+    //.force("collide", d3.forceCollide(forceRadius))
+    //.force("forcey1", d3.forceRadial(380, width / 2, height/2))
+    //.force("forcey1", d3.forceY(0).strength(0.001))
+    //.force("forcey2", d3.forceY(height).strength(0.01))
+    ;
+
+function updatePath() {
+    path = svg_g.select("g.links2").selectAll(".links2")
+      .data(links2, getLinkId);
+    path.exit().remove();
+    path = path.enter().append("path")
+            .attr("id", function (d) {return getLinkId(d);})
+            .attr("class", "links2")
+            .attr('marker-mid','url(#arrowhead)')
+          .merge(path)
+            .style("stroke-width", function(d) { return d.width; })
+            .style("stroke", function(d) { return colorPath(d.value); });
+    simulation.force("path").links(links2);
+}
+
+function updatePathLabel() {
+  //*
+    pathLabel = svg_g.select("g.pathLabel").selectAll("g")
+                    .data(links2, getLinkId);
+        //pathLabel.exit().remove();
+    pathLabelEnter = pathLabel.enter().append("g");
+    pathLabelEnter.append("text")
+          //.attr("class", "pathLabel")
+          .append("textPath")
+            .attr("startOffset", "50%")
+            .attr("text-anchor", "middle")
+            .attr("xlink:href", function(d) { return "#" + getLinkId(d);})
+            .text(function(d) { return d.addr; });
+    pathLabel = pathLabelEnter.merge(  pathLabel);
+}
+
+function updateLink() {
+    link = svg_g.select("g.links").selectAll("line")
+      .data(links, function(d) {return getNodeIdFromLink(d); } );
+    link.exit().remove()
+    link = link.enter().append("line")
+      .merge(link)
+        .attr("stroke-width", function(d) { return d.width; });
+    simulation.force("link").links(links);
+}
+
+function updateNode() {
+    node = svg_g.selectAll(".nodes")
+      .data(nodes, function(d) { return d.id;} );
+    node.exit().remove();
+    node1 = node.enter().append("g")
+        .attr("class", "nodes")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+    node1.append("circle")
+        .attr("r", 10)
+        .attr("fill", function(d) { return nodeColorSelector(d.type);})
+    node1.append("text")
+        .attr("dx", 12)
+        .attr("dy", ".35em")
+        .text(function(d) { return d.label });
+    node = node1.merge(node)
+}
+
+function updateAll() {
+  updateData(true);
+}
+
+function updateData(isNodeUpdate=false) {
+  d3.json(sdc_data_file, function(error, jdata) {
+    if (error) throw error;
+    nodes = jdata.nodes;
+    links = jdata.links;     
+    links2 = jdata.links2;
+    
+    allSiblingLinksData = buildSiblingLinks();
+    
+    if(isNodeUpdate) {
+      simulation.nodes(nodes).on("tick", ticked);
+      updateNode();
+    }
+    
+    updatePath();
+    updatePathLabel();
+    updateLink();
+  });
+}
+
+function ticked() {
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+
+  node.attr("transform", function(d) {return "translate("+ d.x +","+ d.y +")";});
+  path.attr("d", arcPath);  
+}
+
+function arcPath(d) {
+    var dx = d.target.x - d.source.x,
+        dy = d.target.y - d.source.y,
+        dr = Math.sqrt(dx * dx + dy * dy)*arcLevel,
+        siblingCount = countSiblingLinks(d),
+        xRotation = 0,
+        sweep = 1,
+        largeArc = 0;
+
+        if (siblingCount > 1) {
+            var siblings = getSiblingLinks(d);
+            var arcScale = d3.scaleOrdinal()
+                                    .domain(siblings)
+                                    .range(Array.apply(null, {length: siblingCount}).map(Function.call, Number));
+                                    //.range([0, siblingCount-1]);
+            var index=arcScale(getLinkId(d));
+            dr = dr*siblingCount/arcLevel/(index+siblingCount/arcLevel);
+        }
+
+    return "M" + d.source.x + "," + d.source.y + "  A" + dr + ", " + dr + " " + xRotation + ", " + largeArc + ", " + sweep + "  " +  d.target.x + "," + d.target.y;
+}
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+
+var getNodeIdInId = function(n) {
+  return n.id == undefined ? n: n.id;
+}
+var getNodeIdFromLink = function(d) {
+  return getNodeIdInId(d.source)+","+getNodeIdInId(d.target);
+};
+
+var getLinkId = function(d) {
+  baseId = getNodeIdFromLink(d);
+  return (d.addr == undefined)? baseId : baseId+"-"+d.addr;
+};
+
+var isLinkSibling = function(l1, l2) {
+    if( (getNodeIdInId(l1.source) == getNodeIdInId(l2.source) 
+    && getNodeIdInId(l1.target) == getNodeIdInId(l2.target)) 
+  ||  (getNodeIdInId(l1.source) == getNodeIdInId(l2.target)
+    && getNodeIdInId(l1.target) == getNodeIdInId(l2.source)) )
+    return true;
+};
+
+var allSiblingLinksData={};
+
+var countSiblingLinks = function(d) {
+    linkId = getNodeIdFromLink(d);
+    if(linkId in allSiblingLinksData)
+      return allSiblingLinksData[linkId].length;
+      
+    console.log("Something wrong, shouldn't be here!");
+    var count = 0;
+    for(var i = 0; i < links2.length; ++i){
+        if( isLinkSibling(links2[i], d) )
+            count++;
+    };
+    return count;
+};
+
+var getSiblingLinks = function(d) {
+    linkId = getNodeIdFromLink(d);
+    if(linkId in allSiblingLinksData)
+      return allSiblingLinksData[linkId];
+      
+    console.log("Something wrong, shouldn't be here!");
+    var siblings = [];
+    for(var i = 0; i < links2.length; ++i){
+        if( isLinkSibling(links2[i], d) )
+            siblings.push(getLinkId(links2[i]));
+    };
+    allSiblingLinksData[linkId]=siblings;    
+    return siblings;
+};
+
+var buildSiblingLinks = function() {
+    var siblingLinks = {};
+    for(var i = 0; i < links2.length; ++i){
+        linkId = getNodeIdFromLink(links2[i]);
+        if( ! (linkId in siblingLinks) )
+          siblingLinks[linkId]=[]
+        siblingLinks[linkId].push(getLinkId(links2[i]));
+    };
+    return siblingLinks;
+};
+
+var intervalID = null;
+
+function pauseUpdate() {
+  if(intervalID)
+    clearInterval(intervalID);
+  intervalID = null;
+}
+
+function resumeUpdate() {
+  if(!intervalID) {
+    updateData();  
+    intervalID = setInterval(
+      function() {
+        updateData();
+      }, 1000);
+  }
+}
+
+updateAll()
+resumeUpdate();
+
+</script>
+
+</body>
+</html>

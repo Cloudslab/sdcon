@@ -1,0 +1,46 @@
+{
+	"nodes": [
+		{
+			"name": "jay1-exp-1",
+			"flavor": "m1.large",
+			"image":"jay-pisdc-experiment",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-exp-2",
+			"flavor": "m1.xlarge",
+			"image":"jay-pisdc-experiment",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-exp-3",
+			"flavor": "m1.large",
+			"image":"jay-pisdc-experiment",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-exp-4",
+			"size": 1000,
+			"bw": 60000000,
+			"mips": 2000,
+			"pes": 8,
+			"ram": 2048,
+			"image":"jay-pisdc-experiment",
+			"network":"jay-flat"
+		}
+	],
+	"links": [
+		{
+			"bandwidth": 70000000,
+			"name": "link-1-2",
+			"source": "jay1-exp-1",
+			"destination": "jay1-exp-2"
+		},
+		{
+			"bandwidth": 70000000,
+			"name": "link-2-1",
+			"source": "jay1-exp-2",
+			"destination": "jay1-exp-1"
+		}
+	]
+}

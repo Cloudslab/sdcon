@@ -1,0 +1,109 @@
+{
+	"nodes": [
+		{
+			"name": "jay1-wikiclient-1",
+			"flavor": "m1.small",
+			"image":"wikibench-worker",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiclient-2",
+			"flavor": "m1.small",
+			"image":"wikibench-worker",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiclient-3",
+			"flavor": "m1.small",
+			"image":"wikibench-worker",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiclient-4",
+			"flavor": "m1.small",
+			"image":"wikibench-worker",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiserver-1",
+			"flavor": "m1.large",
+			"image":"wikibench-apache",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiserver-2",
+			"flavor": "m1.large",
+			"image":"wikibench-apache",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiserver-3",
+			"flavor": "m1.large",
+			"image":"wikibench-apache",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikiserver-4",
+			"flavor": "m1.large",
+			"image":"wikibench-apache",
+			"network":"jay-flat"
+		},
+		{
+			"name": "jay1-wikibench-db",
+			"flavor": "m1.xlarge",
+			"image":"wikibench-database.xlarge",
+			"network":"jay-flat"
+		}
+	],
+	"links": [
+		{
+			"bandwidth": 70000000,
+			"name": "link1",
+			"source": "jay1-wikibench-db",
+			"destination": "jay1-wikiserver-1"
+		},
+		{
+			"bandwidth": 70000000,
+			"name": "link1",
+			"source": "jay1-wikibench-db",
+			"destination": "jay1-wikiserver-2"
+		},
+		{
+			"bandwidth": 70000000,
+			"name": "link1",
+			"source": "jay1-wikibench-db",
+			"destination": "jay1-wikiserver-3"
+		},
+		{
+			"bandwidth": 70000000,
+			"name": "link1",
+			"source": "jay1-wikibench-db",
+			"destination": "jay1-wikiserver-4"
+		},
+		{
+			"bandwidth": 30000000,
+			"name": "link1",
+			"source": "jay1-wikiserver-1",
+			"destination": "jay1-wikiclient-1"
+		},
+		{
+			"bandwidth": 30000000,
+			"name": "link1",
+			"source": "jay1-wikiserver-2",
+			"destination": "jay1-wikiclient-2"
+		},
+		{
+			"bandwidth": 30000000,
+			"name": "link1",
+			"source": "jay1-wikiserver-3",
+			"destination": "jay1-wikiclient-3"
+		},
+		{
+			"bandwidth": 30000000,
+			"name": "link1",
+			"source": "jay1-wikiserver-4",
+			"destination": "jay1-wikiclient-4"
+		}
+		
+	]
+}
